@@ -109,8 +109,7 @@ func websocketConnectionReader(connectionId string, ctx context.Context, c *webs
 	defer close(toBrowserChannel)
 	defer log.Printf("[%v websocketConnectionReader] finished", connectionId)
 	for {
-		// If no messages received from browser after 30s, disconnect
-		ctx, cancel := context.WithTimeout(ctx, time.Second*30)
+		ctx, cancel := context.WithCancel(ctx)
 		defer cancel()
 
 		var v interface{}
@@ -131,6 +130,10 @@ func websocketConnectionWriter(connectionId string, ctx context.Context, c *webs
 	defer log.Printf("[%v websocketConnectionWriter] finished", connectionId)
 
 	for toBrowserMessage := range toBrowserChannel {
+		// If no messages could be sent to browser after 30s, disconnect (keep alives goes server->client)
+		ctx, cancel := context.WithTimeout(ctx, time.Second*30)
+		defer cancel()
+
 		log.Printf("[%v websocketConnectionWriter] [middleware->browser] %v", connectionId, toBrowserMessage)
 		err := wsjson.Write(ctx, c, toBrowserMessage)
 		if err != nil {
