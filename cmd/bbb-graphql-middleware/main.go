@@ -106,7 +106,6 @@ func hasuraClient(connectionId string, ctx context.Context, cookies []*http.Cook
 func websocketConnectionReader(connectionId string, ctx context.Context, c *websocket.Conn, fromBrowserChannel chan interface{}, toBrowserChannel chan interface{}, wg *sync.WaitGroup) {
 	defer wg.Done()
 	defer close(fromBrowserChannel)
-	defer close(toBrowserChannel)
 	defer log.Printf("[%v websocketConnectionReader] finished", connectionId)
 	for {
 		ctx, cancel := context.WithCancel(ctx)
