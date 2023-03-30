@@ -19,6 +19,53 @@ ws.onopen = (event) => {
     let msg = 0;
 
     ws.send(`{"type":"connection_init","payload":{"headers":{"X-Session-Token":"ezhyvo77prgcasbd"}}}`);
+
+    const query = `subscription {
+        user(where: {joined: {_eq: true}}, order_by: {name: asc}) {
+          userId
+          name
+          role
+          color
+          avatar
+          emoji
+          avatar
+          presenter
+          pinned
+          locked
+          authed
+          mobile
+          clientType
+          leftFlag
+          loggedOut
+          microphones {
+            joined
+            listenOnly
+            talking
+            muted
+            voiceUserId
+            __typename
+          }
+          cameras {
+            streamId
+            __typename
+          }
+          whiteboards {
+            whiteboardId
+            __typename
+          }
+          breakoutRoom {
+            isDefaultName
+            sequence
+            shortName
+            online
+            __typename
+          }
+          __typename
+        }
+      }`;
+      
+      ws.send(JSON.stringify({id:"1", type: "start", payload:{ variables:{}, extensions: {}, query: query } }));
+      
 }
 
 
