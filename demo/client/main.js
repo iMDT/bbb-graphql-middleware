@@ -1,9 +1,11 @@
 const WebSocket = require('ws');
+//const ws = new WebSocket("wss://bbb-graphql-test-server.bbb.imdt.dev/v1/graphql", ['graphql-ws'], {
 const ws = new WebSocket("ws://127.0.0.1:8378/v1/graphql", ['graphql-ws'], {
     headers: {
-        "Cookie": "JSESSIONID=B09E8B79DB7B0B05C38322AE9C5BFCE3; sessionID="
+        "Cookie": "JSESSIONID=39C6FC6A7B044757EA9556BF30D5C44E; sessionID="
     }
 });
+
  
 ws.onmessage = (event) => {
     console.log(`Received: ${event.data}`);
@@ -18,7 +20,7 @@ ws.onopen = (event) => {
     const num = new Date().getTime();
     let msg = 0;
 
-    ws.send(`{"type":"connection_init","payload":{"headers":{"X-Session-Token":"ezhyvo77prgcasbd"}}}`);
+    ws.send(`{"type":"connection_init","payload":{"headers":{"X-Session-Token":"dc4fyoys4twjlukp"}}}	`);
 
     const query = `subscription {
         user(where: {joined: {_eq: true}}, order_by: {name: asc}) {
@@ -64,7 +66,9 @@ ws.onopen = (event) => {
         }
       }`;
       
-      ws.send(JSON.stringify({id:"1", type: "start", payload:{ variables:{}, extensions: {}, query: query } }));
+      const payload = { variables:{}, extensions: {}, query: query };
+    //   console.log(`Sending: ${JSON.stringify(payload)}`);
+      ws.send(JSON.stringify({id:"1", type: "start", payload }));
       
 }
 
