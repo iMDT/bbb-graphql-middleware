@@ -2,7 +2,7 @@ const WebSocket = require('ws');
 //const ws = new WebSocket("wss://bbb-graphql-test-server.bbb.imdt.dev/v1/graphql", ['graphql-ws'], {
 const ws = new WebSocket("ws://127.0.0.1:8378/v1/graphql", ['graphql-ws'], {
     headers: {
-        "Cookie": "JSESSIONID=39C6FC6A7B044757EA9556BF30D5C44E; sessionID="
+        "Cookie": "JSESSIONID=04EE9EB9875D8FDBE72DBC2EAE9D5FEF; sessionID="
     }
 });
 
@@ -20,7 +20,7 @@ ws.onopen = (event) => {
     const num = new Date().getTime();
     let msg = 0;
 
-    ws.send(`{"type":"connection_init","payload":{"headers":{"X-Session-Token":"dc4fyoys4twjlukp"}}}	`);
+    ws.send(`{"type":"connection_init","payload":{"headers":{"X-Session-Token":"qpy0jhwrbm1wlsuz"}}}	`);
 
     const query = `subscription {
         user(where: {joined: {_eq: true}}, order_by: {name: asc}) {

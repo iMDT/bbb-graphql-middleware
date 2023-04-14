@@ -12,8 +12,9 @@ import (
 	"nhooyr.io/websocket"
 )
 
-// var hasuraEndpoint = "ws://127.0.0.1:8080/v1/graphql"
-var hasuraEndpoint = "ws://127.0.0.1:8888/v1/graphql"
+var hasuraEndpoint = "ws://127.0.0.1:8080/v1/graphql"
+
+// var hasuraEndpoint = "ws://127.0.0.1:8888/v1/graphql"
 var hasuraConnectionContexts map[string]context.Context
 var bufferSize = 10
 
