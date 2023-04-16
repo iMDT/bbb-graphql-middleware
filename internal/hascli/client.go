@@ -2,25 +2,29 @@ package hascli
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net/http"
 	"net/http/cookiejar"
 	"net/url"
 	"sync"
 
+	"github.com/iMDT/bbb-graphql-middleware/internal/common"
 	"golang.org/x/xerrors"
 	"nhooyr.io/websocket"
 )
 
+var lastHasuraConnectionId int
 var hasuraEndpoint = "ws://127.0.0.1:8080/v1/graphql"
-
-// var hasuraEndpoint = "ws://127.0.0.1:8888/v1/graphql"
-var hasuraConnectionContexts map[string]context.Context
 var bufferSize = 10
 
 // Hasura client connection
-func HasuraClient(connectionId string, browserConnectionContext context.Context, cookies []*http.Cookie, fromBrowserChannel chan interface{}, toBrowserChannel chan interface{}) error {
-	defer log.Printf("[%v hasuraClient] finished", connectionId)
+func HasuraClient(browserConnection *common.BrowserConnection, cookies []*http.Cookie, fromBrowserChannel chan interface{}, toBrowserChannel chan interface{}) error {
+	defer log.Printf("[%v hasuraClient] finished", browserConnection.Id)
+
+	// Obtain id for this connection
+	lastHasuraConnectionId++
+	hasuraConnectionId := "HC" + fmt.Sprintf("%010d", lastHasuraConnectionId)
 
 	// Add sub-protocol
 	var dialOptions websocket.DialOptions
@@ -46,8 +50,15 @@ func HasuraClient(connectionId string, browserConnectionContext context.Context,
 	// this means that if browser connection is closed, the hasura connection will close also
 	// this also means that we can close the hasura connection without closing the browser one
 	// this is used for the invalidation process (reconnection only on the hasura side )
-	var hasuraConnectionContext, hasuraConnectionContextCancel = context.WithCancel(browserConnectionContext)
+	var hasuraConnectionContext, hasuraConnectionContextCancel = context.WithCancel(browserConnection.Context)
 	defer hasuraConnectionContextCancel()
+
+	var thisConnection = HasuraConnection{
+		id:                hasuraConnectionId,
+		browserconn:       browserConnection,
+		context:           hasuraConnectionContext,
+		contextCancelFunc: hasuraConnectionContextCancel,
+	}
 
 	// Make the connection
 	c, _, err := websocket.Dial(hasuraConnectionContext, hasuraEndpoint, &dialOptions)
@@ -56,8 +67,10 @@ func HasuraClient(connectionId string, browserConnectionContext context.Context,
 	}
 	defer c.Close(websocket.StatusInternalError, "the sky is falling")
 
+	thisConnection.websocket = c
+
 	// Log the connection success
-	log.Printf("[%v hasuraClient] connected with Hasura", connectionId)
+	log.Printf("[%v hasuraClient] connected with Hasura", browserConnection.Id)
 
 	// Configure the wait group
 	var wg sync.WaitGroup
@@ -66,10 +79,15 @@ func HasuraClient(connectionId string, browserConnectionContext context.Context,
 	// Start routines
 
 	// reads from browser, writes to hasura
-	go HasuraConnectionWriter(connectionId, hasuraConnectionContext, hasuraConnectionContextCancel, c, fromBrowserChannel, &wg)
+	go HasuraConnectionWriter(&thisConnection, fromBrowserChannel, &wg)
 
 	// reads from hasura, writes to browser
-	go HasuraConnectionReader(connectionId, hasuraConnectionContext, hasuraConnectionContextCancel, c, toBrowserChannel, &wg)
+	go HasuraConnectionReader(&thisConnection, toBrowserChannel, fromBrowserChannel, &wg)
+
+	// if it's a reconnect, inject authentication
+	if thisConnection.browserconn.ConnectionInitMessage != nil {
+		fromBrowserChannel <- thisConnection.browserconn.ConnectionInitMessage
+	}
 
 	// Wait
 	wg.Wait()

@@ -2,7 +2,7 @@ const WebSocket = require('ws');
 //const ws = new WebSocket("wss://bbb-graphql-test-server.bbb.imdt.dev/v1/graphql", ['graphql-ws'], {
 const ws = new WebSocket("ws://127.0.0.1:8378/v1/graphql", ['graphql-ws'], {
     headers: {
-        "Cookie": "JSESSIONID=04EE9EB9875D8FDBE72DBC2EAE9D5FEF; sessionID="
+        "Cookie": "JSESSIONID=1ECDB652469F6B74C41ADA3029559069; sessionID="
     }
 });
 
@@ -20,7 +20,7 @@ ws.onopen = (event) => {
     const num = new Date().getTime();
     let msg = 0;
 
-    ws.send(`{"type":"connection_init","payload":{"headers":{"X-Session-Token":"qpy0jhwrbm1wlsuz"}}}	`);
+    ws.send(`{"type":"connection_init","payload":{"headers":{"X-Session-Token":"wxv3m3hmrwizdwbi"}}}	`);
 
     const query = `subscription {
         user(where: {joined: {_eq: true}}, order_by: {name: asc}) {
@@ -39,29 +39,6 @@ ws.onopen = (event) => {
           clientType
           leftFlag
           loggedOut
-          microphones {
-            joined
-            listenOnly
-            talking
-            muted
-            voiceUserId
-            __typename
-          }
-          cameras {
-            streamId
-            __typename
-          }
-          whiteboards {
-            whiteboardId
-            __typename
-          }
-          breakoutRoom {
-            isDefaultName
-            sequence
-            shortName
-            online
-            __typename
-          }
           __typename
         }
       }`;
