@@ -1,9 +1,11 @@
 package hascli
 
-func HasuraRestoreState(hc *HasuraConnection, fromBrowserChannel chan interface{}) {
+import "github.com/iMDT/bbb-graphql-middleware/internal/common"
+
+func HasuraRestoreState(hc *common.HasuraConnection, fromBrowserChannel chan interface{}) {
 	// for query :
-	for _, query := range hc.browserconn.CurrentQueries {
-		if query.LastSeenOnHasuraConnetion != hc.id {
+	for _, query := range hc.Browserconn.CurrentQueries {
+		if query.LastSeenOnHasuraConnetion != hc.Id {
 			fromBrowserChannel <- query.Message
 		}
 	}

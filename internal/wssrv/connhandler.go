@@ -19,7 +19,7 @@ var lastBrowserConnectionId int
 var bufferSize = 100
 
 // active websocket connections
-var wsConnections map[string]*common.BrowserConnection = make(map[string]*common.BrowserConnection)
+var WsConnections map[string]*common.BrowserConnection = make(map[string]*common.BrowserConnection)
 
 // Handle client connection
 // This is the connection that comes from browser
@@ -48,9 +48,9 @@ func WebsocketConnectionHandler(w http.ResponseWriter, r *http.Request) {
 		Context:        browserConnectionContext,
 	}
 
-	wsConnections[browserConnectionId] = &thisConnection
+	WsConnections[browserConnectionId] = &thisConnection
 
-	defer delete(wsConnections, browserConnectionId)
+	defer delete(WsConnections, browserConnectionId)
 
 	// Log it
 	log.Printf("[%v WebsocketConnectionHandler] connection accepted", browserConnectionId)
@@ -71,7 +71,7 @@ func WebsocketConnectionHandler(w http.ResponseWriter, r *http.Request) {
 			default:
 				{
 					log.Printf("[%v WebsocketConnectionHandler] creating hasura client", browserConnectionId)
-					hascli.HasuraClient(wsConnections[browserConnectionId], r.Cookies(), fromBrowserChannel, toBrowserChannel)
+					hascli.HasuraClient(WsConnections[browserConnectionId], r.Cookies(), fromBrowserChannel, toBrowserChannel)
 					time.Sleep(100 * time.Millisecond)
 				}
 			}

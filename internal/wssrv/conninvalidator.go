@@ -40,7 +40,17 @@ func RedisConnectionnInvalidator() {
 			messageCoreAsMap := messageAsMap["core"].(map[string]interface{})
 			messageBodyAsMap := messageCoreAsMap["body"].(map[string]interface{})
 			sessionTokenToInvalidate := messageBodyAsMap["sessionToken"]
-			log.Printf("Received invalidate request for sessionToken %v", sessionTokenToInvalidate)
+			log.Printf("[RedisConnectionnInvalidator] Received invalidate request for sessionToken %v", sessionTokenToInvalidate)
+
+			for _, browserConnection := range WsConnections {
+				if browserConnection.SessionToken == sessionTokenToInvalidate {
+					if browserConnection.HasuraConnection != nil {
+						log.Printf("[RedisConnectionnInvalidator] Processing invalidate request for sessionToken %v (hasura connection %v)", sessionTokenToInvalidate, browserConnection.HasuraConnection.Id)
+						browserConnection.HasuraConnection.ContextCancelFunc()
+						log.Printf("[RedisConnectionnInvalidator] Processed invalidate request for sessionToken %v (hasura connection %v)", sessionTokenToInvalidate, browserConnection.HasuraConnection.Id)
+					}
+				}
+			}
 		}
 	}
 }

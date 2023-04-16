@@ -10,15 +10,15 @@ import (
 
 // HasuraConnectionWriter
 // process messages (middleware->hasura)
-func HasuraConnectionWriter(hc *HasuraConnection, fromBrowserChannel chan interface{}, wg *sync.WaitGroup) {
+func HasuraConnectionWriter(hc *common.HasuraConnection, fromBrowserChannel chan interface{}, wg *sync.WaitGroup) {
 	defer wg.Done()
-	defer hc.contextCancelFunc()
-	defer log.Printf("[%v HasuraConnectionWriter] finished", hc.browserconn.Id)
+	defer hc.ContextCancelFunc()
+	defer log.Printf("[%v HasuraConnectionWriter] finished", hc.Browserconn.Id)
 
 RangeLoop:
 	for {
 		select {
-		case <-hc.context.Done():
+		case <-hc.Context.Done():
 			break RangeLoop
 		case fromBrowserMessage := <-fromBrowserChannel:
 			{
@@ -26,30 +26,30 @@ RangeLoop:
 
 				if fromBrowserMessageAsMap["type"] == "start" {
 					var queryId = fromBrowserMessageAsMap["id"].(string)
-					hc.browserconn.CurrentQueries[queryId] = common.GraphQlQuery{
+					hc.Browserconn.CurrentQueries[queryId] = common.GraphQlQuery{
 						Id:                        queryId,
 						Message:                   fromBrowserMessage,
-						LastSeenOnHasuraConnetion: hc.id,
+						LastSeenOnHasuraConnetion: hc.Id,
 					}
 
-					log.Printf("[%v HasuraConnectionWriter] Current queries: %v", hc.browserconn.Id, hc.browserconn.CurrentQueries)
+					log.Printf("[%v %v HasuraConnectionWriter] Current queries: %v", hc.Browserconn.Id, hc.Id, hc.Browserconn.CurrentQueries, hc)
 				}
 
 				if fromBrowserMessageAsMap["type"] == "stop" {
 					var queryId = fromBrowserMessageAsMap["id"].(string)
-					delete(hc.browserconn.CurrentQueries, queryId)
+					delete(hc.Browserconn.CurrentQueries, queryId)
 
-					log.Printf("[%v HasuraConnectionWriter] Current queries: %v", hc.browserconn.Id, hc.browserconn.CurrentQueries)
+					log.Printf("[%v %v HasuraConnectionWriter] Current queries: %v", hc.Browserconn.Id, hc.Id, hc.Browserconn.CurrentQueries)
 				}
 
 				if fromBrowserMessageAsMap["type"] == "connection_init" {
-					hc.browserconn.ConnectionInitMessage = fromBrowserMessage
+					hc.Browserconn.ConnectionInitMessage = fromBrowserMessage
 				}
 
-				log.Printf("[%v HasuraConnectionWriter] [middleware->hasura] %v", hc.browserconn.Id, fromBrowserMessage)
-				err := wsjson.Write(hc.context, hc.websocket, fromBrowserMessage)
+				log.Printf("[%v %v HasuraConnectionWriter] [middleware->hasura] %v", hc.Browserconn.Id, hc.Id, fromBrowserMessage)
+				err := wsjson.Write(hc.Context, hc.Websocket, fromBrowserMessage)
 				if err != nil {
-					log.Printf("[%v HasuraConnectionWriter] error on write (we're disconnected from hasura): %v", hc.browserconn.Id, err)
+					log.Printf("[%v %v HasuraConnectionWriter] error on write (we're disconnected from hasura): %v", hc.Browserconn.Id, hc.Id, err)
 					return
 				}
 			}

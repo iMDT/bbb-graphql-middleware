@@ -1,6 +1,10 @@
 package common
 
-import "context"
+import (
+	"context"
+
+	"nhooyr.io/websocket"
+)
 
 // wssrv
 type GraphQlQuery struct {
@@ -15,4 +19,13 @@ type BrowserConnection struct {
 	Context               context.Context
 	CurrentQueries        map[string]GraphQlQuery
 	ConnectionInitMessage interface{}
+	HasuraConnection      *HasuraConnection
+}
+
+type HasuraConnection struct {
+	Id                string             // hasura connection id
+	Browserconn       *BrowserConnection // browser connection that originated this hasura connection
+	Websocket         *websocket.Conn    // websocket used to connect to hasura
+	Context           context.Context    // hasura connection context
+	ContextCancelFunc context.CancelFunc // function to cancel the hasura context (and so, the connection)
 }

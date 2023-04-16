@@ -26,8 +26,9 @@ func SessionTokenReader(connectionId string, browserConnectionContext context.Co
 			if fromBrowserMessageAsMap["type"] == "connection_init" {
 				var payloadAsMap = fromBrowserMessageAsMap["payload"].(map[string]interface{})
 				var headersAsMap = payloadAsMap["headers"].(map[string]interface{})
-				sessionToken := headersAsMap["X-Session-Token"]
+				sessionToken := headersAsMap["X-Session-Token"].(string)
 				log.Printf("[%v SessionTokenReader] intercepted session token %v", connectionId, sessionToken)
+				WsConnections[connectionId].SessionToken = sessionToken
 			}
 		}
 	}

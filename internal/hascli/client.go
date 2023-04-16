@@ -16,15 +16,14 @@ import (
 
 var lastHasuraConnectionId int
 var hasuraEndpoint = "ws://127.0.0.1:8080/v1/graphql"
-var bufferSize = 10
 
 // Hasura client connection
 func HasuraClient(browserConnection *common.BrowserConnection, cookies []*http.Cookie, fromBrowserChannel chan interface{}, toBrowserChannel chan interface{}) error {
-	defer log.Printf("[%v hasuraClient] finished", browserConnection.Id)
-
 	// Obtain id for this connection
 	lastHasuraConnectionId++
 	hasuraConnectionId := "HC" + fmt.Sprintf("%010d", lastHasuraConnectionId)
+
+	defer log.Printf("[%v %v hasuraClient] finished", browserConnection.Id, hasuraConnectionId)
 
 	// Add sub-protocol
 	var dialOptions websocket.DialOptions
@@ -53,12 +52,15 @@ func HasuraClient(browserConnection *common.BrowserConnection, cookies []*http.C
 	var hasuraConnectionContext, hasuraConnectionContextCancel = context.WithCancel(browserConnection.Context)
 	defer hasuraConnectionContextCancel()
 
-	var thisConnection = HasuraConnection{
-		id:                hasuraConnectionId,
-		browserconn:       browserConnection,
-		context:           hasuraConnectionContext,
-		contextCancelFunc: hasuraConnectionContextCancel,
+	var thisConnection = common.HasuraConnection{
+		Id:                hasuraConnectionId,
+		Browserconn:       browserConnection,
+		Context:           hasuraConnectionContext,
+		ContextCancelFunc: hasuraConnectionContextCancel,
 	}
+
+	browserConnection.HasuraConnection = &thisConnection
+	defer func() { browserConnection.HasuraConnection = nil }()
 
 	// Make the connection
 	c, _, err := websocket.Dial(hasuraConnectionContext, hasuraEndpoint, &dialOptions)
@@ -67,10 +69,10 @@ func HasuraClient(browserConnection *common.BrowserConnection, cookies []*http.C
 	}
 	defer c.Close(websocket.StatusInternalError, "the sky is falling")
 
-	thisConnection.websocket = c
+	thisConnection.Websocket = c
 
 	// Log the connection success
-	log.Printf("[%v hasuraClient] connected with Hasura", browserConnection.Id)
+	log.Printf("[%v %v hasuraClient] connected with Hasura", browserConnection.Id, hasuraConnectionId)
 
 	// Configure the wait group
 	var wg sync.WaitGroup
@@ -85,8 +87,8 @@ func HasuraClient(browserConnection *common.BrowserConnection, cookies []*http.C
 	go HasuraConnectionReader(&thisConnection, toBrowserChannel, fromBrowserChannel, &wg)
 
 	// if it's a reconnect, inject authentication
-	if thisConnection.browserconn.ConnectionInitMessage != nil {
-		fromBrowserChannel <- thisConnection.browserconn.ConnectionInitMessage
+	if thisConnection.Browserconn.ConnectionInitMessage != nil {
+		fromBrowserChannel <- thisConnection.Browserconn.ConnectionInitMessage
 	}
 
 	// Wait

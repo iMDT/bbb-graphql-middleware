@@ -4,6 +4,7 @@ import (
 	"log"
 	"sync"
 
+	"github.com/iMDT/bbb-graphql-middleware/internal/common"
 	"nhooyr.io/websocket/wsjson"
 )
 
@@ -11,19 +12,19 @@ import (
 // process messages (hasura->middleware)
 // toBrowserChannel - channel that this routine continuously read
 // fromBrowserChannel - channel that this routine write the previous queries on conn_ack
-func HasuraConnectionReader(hc *HasuraConnection, toBrowserChannel chan interface{}, fromBrowserChannel chan interface{}, wg *sync.WaitGroup) {
+func HasuraConnectionReader(hc *common.HasuraConnection, toBrowserChannel chan interface{}, fromBrowserChannel chan interface{}, wg *sync.WaitGroup) {
 	defer wg.Done()
-	defer hc.contextCancelFunc()
-	defer log.Printf("[%v HasuraConnectionReader] finished", hc.browserconn.Id)
+	defer hc.ContextCancelFunc()
+	defer log.Printf("[%v %v HasuraConnectionReader] finished", hc.Browserconn.Id, hc.Id)
 
 	for {
 		var message interface{}
-		err := wsjson.Read(hc.context, hc.websocket, &message)
+		err := wsjson.Read(hc.Context, hc.Websocket, &message)
 		if err != nil {
 			return
 		}
 
-		log.Printf("[%v HasuraConnectionReader] [hasura->middleware] %v", hc.browserconn.Id, message)
+		log.Printf("[%v %v HasuraConnectionReader] [hasura->middleware] %v", hc.Browserconn.Id, hc.Id, message)
 
 		toBrowserChannel <- message
 
