@@ -1,19 +1,21 @@
-package hascli
+package writer
 
 import (
-	"log"
 	"sync"
 
 	"github.com/iMDT/bbb-graphql-middleware/internal/common"
+	log "github.com/sirupsen/logrus"
 	"nhooyr.io/websocket/wsjson"
 )
 
 // HasuraConnectionWriter
-// process messages (middleware->hasura)
+// process messages (middleware to hasura)
 func HasuraConnectionWriter(hc *common.HasuraConnection, fromBrowserChannel chan interface{}, wg *sync.WaitGroup) {
+	log := log.WithField("_routine", "HasuraConnectionWriter").WithField("browserConnectionId", hc.Browserconn.Id).WithField("hasuraConnectionId", hc.Id)
+
 	defer wg.Done()
 	defer hc.ContextCancelFunc()
-	defer log.Printf("[%v HasuraConnectionWriter] finished", hc.Browserconn.Id)
+	defer log.Infof("finished")
 
 RangeLoop:
 	for {
@@ -22,34 +24,38 @@ RangeLoop:
 			break RangeLoop
 		case fromBrowserMessage := <-fromBrowserChannel:
 			{
+				if fromBrowserMessage == nil {
+					continue
+				}
+
 				var fromBrowserMessageAsMap = fromBrowserMessage.(map[string]interface{})
 
 				if fromBrowserMessageAsMap["type"] == "start" {
 					var queryId = fromBrowserMessageAsMap["id"].(string)
-					hc.Browserconn.CurrentQueries[queryId] = common.GraphQlQuery{
+					hc.Browserconn.ActiveSubscriptions[queryId] = common.GraphQlSubscription{
 						Id:                        queryId,
 						Message:                   fromBrowserMessage,
 						LastSeenOnHasuraConnetion: hc.Id,
 					}
 
-					log.Printf("[%v %v HasuraConnectionWriter] Current queries: %v", hc.Browserconn.Id, hc.Id, hc.Browserconn.CurrentQueries, hc)
+					// log.Tracef("Current queries: %v", hc.Browserconn.ActiveSubscriptions)
 				}
 
 				if fromBrowserMessageAsMap["type"] == "stop" {
 					var queryId = fromBrowserMessageAsMap["id"].(string)
-					delete(hc.Browserconn.CurrentQueries, queryId)
+					delete(hc.Browserconn.ActiveSubscriptions, queryId)
 
-					log.Printf("[%v %v HasuraConnectionWriter] Current queries: %v", hc.Browserconn.Id, hc.Id, hc.Browserconn.CurrentQueries)
+					// log.Tracef("Current queries: %v", hc.Browserconn.ActiveSubscriptions)
 				}
 
 				if fromBrowserMessageAsMap["type"] == "connection_init" {
 					hc.Browserconn.ConnectionInitMessage = fromBrowserMessage
 				}
 
-				log.Printf("[%v %v HasuraConnectionWriter] [middleware->hasura] %v", hc.Browserconn.Id, hc.Id, fromBrowserMessage)
+				log.Tracef("sending to hasura: %v", fromBrowserMessage)
 				err := wsjson.Write(hc.Context, hc.Websocket, fromBrowserMessage)
 				if err != nil {
-					log.Printf("[%v %v HasuraConnectionWriter] error on write (we're disconnected from hasura): %v", hc.Browserconn.Id, hc.Id, err)
+					log.Errorf("error on write (we're disconnected from hasura): %v", err)
 					return
 				}
 			}

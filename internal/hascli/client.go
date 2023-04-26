@@ -3,7 +3,9 @@ package hascli
 import (
 	"context"
 	"fmt"
-	"log"
+	"github.com/iMDT/bbb-graphql-middleware/internal/hascli/conn/reader"
+	"github.com/iMDT/bbb-graphql-middleware/internal/hascli/conn/writer"
+	log "github.com/sirupsen/logrus"
 	"net/http"
 	"net/http/cookiejar"
 	"net/url"
@@ -19,11 +21,14 @@ var hasuraEndpoint = "ws://127.0.0.1:8080/v1/graphql"
 
 // Hasura client connection
 func HasuraClient(browserConnection *common.BrowserConnection, cookies []*http.Cookie, fromBrowserChannel chan interface{}, toBrowserChannel chan interface{}) error {
+	log := log.WithField("_routine", "HasuraClient").WithField("browserConnectionId", browserConnection.Id)
+
 	// Obtain id for this connection
 	lastHasuraConnectionId++
 	hasuraConnectionId := "HC" + fmt.Sprintf("%010d", lastHasuraConnectionId)
+	log = log.WithField("hasuraConnectionId", hasuraConnectionId)
 
-	defer log.Printf("[%v %v hasuraClient] finished", browserConnection.Id, hasuraConnectionId)
+	defer log.Infof("finished")
 
 	// Add sub-protocol
 	var dialOptions websocket.DialOptions
@@ -72,7 +77,7 @@ func HasuraClient(browserConnection *common.BrowserConnection, cookies []*http.C
 	thisConnection.Websocket = c
 
 	// Log the connection success
-	log.Printf("[%v %v hasuraClient] connected with Hasura", browserConnection.Id, hasuraConnectionId)
+	log.Infof("connected with Hasura")
 
 	// Configure the wait group
 	var wg sync.WaitGroup
@@ -81,10 +86,10 @@ func HasuraClient(browserConnection *common.BrowserConnection, cookies []*http.C
 	// Start routines
 
 	// reads from browser, writes to hasura
-	go HasuraConnectionWriter(&thisConnection, fromBrowserChannel, &wg)
+	go writer.HasuraConnectionWriter(&thisConnection, fromBrowserChannel, &wg)
 
 	// reads from hasura, writes to browser
-	go HasuraConnectionReader(&thisConnection, toBrowserChannel, fromBrowserChannel, &wg)
+	go reader.HasuraConnectionReader(&thisConnection, toBrowserChannel, fromBrowserChannel, &wg)
 
 	// if it's a reconnect, inject authentication
 	if thisConnection.Browserconn.ConnectionInitMessage != nil {

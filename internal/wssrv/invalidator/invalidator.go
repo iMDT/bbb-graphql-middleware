@@ -1,14 +1,16 @@
-package wssrv
+package invalidator
 
 import (
 	"context"
 	"encoding/json"
-	"log"
-
+	"github.com/iMDT/bbb-graphql-middleware/internal/wssrv"
 	"github.com/redis/go-redis/v9"
+	log "github.com/sirupsen/logrus"
 )
 
 func RedisConnectionnInvalidator() {
+	log := log.WithField("_routine", "RedisConnectionnInvalidator")
+
 	var ctx = context.Background()
 
 	redisClient := redis.NewClient(&redis.Options{
@@ -22,7 +24,7 @@ func RedisConnectionnInvalidator() {
 	for {
 		msg, err := subscriber.ReceiveMessage(ctx)
 		if err != nil {
-			log.Printf("[RedisConnectionnInvalidator] error: ", err)
+			log.Errorf("error: ", err)
 		}
 
 		var message interface{}
@@ -40,14 +42,14 @@ func RedisConnectionnInvalidator() {
 			messageCoreAsMap := messageAsMap["core"].(map[string]interface{})
 			messageBodyAsMap := messageCoreAsMap["body"].(map[string]interface{})
 			sessionTokenToInvalidate := messageBodyAsMap["sessionToken"]
-			log.Printf("[RedisConnectionnInvalidator] Received invalidate request for sessionToken %v", sessionTokenToInvalidate)
+			log.Infof("Received invalidate request for sessionToken %v", sessionTokenToInvalidate)
 
-			for _, browserConnection := range WsConnections {
+			for _, browserConnection := range wssrv.WsConnections {
 				if browserConnection.SessionToken == sessionTokenToInvalidate {
 					if browserConnection.HasuraConnection != nil {
-						log.Printf("[RedisConnectionnInvalidator] Processing invalidate request for sessionToken %v (hasura connection %v)", sessionTokenToInvalidate, browserConnection.HasuraConnection.Id)
+						log.Infof("Processing invalidate request for sessionToken %v (hasura connection %v)", sessionTokenToInvalidate, browserConnection.HasuraConnection.Id)
 						browserConnection.HasuraConnection.ContextCancelFunc()
-						log.Printf("[RedisConnectionnInvalidator] Processed invalidate request for sessionToken %v (hasura connection %v)", sessionTokenToInvalidate, browserConnection.HasuraConnection.Id)
+						log.Infof("Processed invalidate request for sessionToken %v (hasura connection %v)", sessionTokenToInvalidate, browserConnection.HasuraConnection.Id)
 					}
 				}
 			}

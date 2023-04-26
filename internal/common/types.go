@@ -6,26 +6,25 @@ import (
 	"nhooyr.io/websocket"
 )
 
-// wssrv
-type GraphQlQuery struct {
+type GraphQlSubscription struct {
 	Id                        string
 	Message                   interface{}
 	LastSeenOnHasuraConnetion string // id of the hasura connection that this query was active
 }
 
 type BrowserConnection struct {
-	Id                    string
-	SessionToken          string
-	Context               context.Context
-	CurrentQueries        map[string]GraphQlQuery
-	ConnectionInitMessage interface{}
-	HasuraConnection      *HasuraConnection
+	Id                    string                         // browser connection id
+	SessionToken          string                         // session token of this connection
+	Context               context.Context                // browser connection context
+	ActiveSubscriptions   map[string]GraphQlSubscription // active subscriptions of this connection (start, but no stop)
+	ConnectionInitMessage interface{}                    // init message received in this connection (to be used on hasura reconnect)
+	HasuraConnection      *HasuraConnection              // associated hasura connection
 }
 
 type HasuraConnection struct {
 	Id                string             // hasura connection id
 	Browserconn       *BrowserConnection // browser connection that originated this hasura connection
 	Websocket         *websocket.Conn    // websocket used to connect to hasura
-	Context           context.Context    // hasura connection context
-	ContextCancelFunc context.CancelFunc // function to cancel the hasura context (and so, the connection)
+	Context           context.Context    // hasura connection context (child of browser connection context)
+	ContextCancelFunc context.CancelFunc // function to cancel the hasura context (and so, the hasura connection)
 }

@@ -3,7 +3,9 @@ package wssrv
 import (
 	"context"
 	"fmt"
-	"log"
+	"github.com/iMDT/bbb-graphql-middleware/internal/wssrv/reader"
+	"github.com/iMDT/bbb-graphql-middleware/internal/wssrv/writer"
+	log "github.com/sirupsen/logrus"
 	"net/http"
 	"sync"
 	"time"
@@ -24,9 +26,12 @@ var WsConnections map[string]*common.BrowserConnection = make(map[string]*common
 // Handle client connection
 // This is the connection that comes from browser
 func WebsocketConnectionHandler(w http.ResponseWriter, r *http.Request) {
+	log := log.WithField("_routine", "WebsocketConnectionHandler")
+
 	// Obtain id for this connection
 	lastBrowserConnectionId++
 	browserConnectionId := "BC" + fmt.Sprintf("%010d", lastBrowserConnectionId)
+	log = log.WithField("browserConnectionId", browserConnectionId)
 
 	// Starts a context that will be dependent on the connection, so we can cancel subroutines when the connection is dropped
 	browserConnectionContext, browserConnectionContextCancel := context.WithCancel(r.Context())
@@ -38,14 +43,14 @@ func WebsocketConnectionHandler(w http.ResponseWriter, r *http.Request) {
 
 	c, err := websocket.Accept(w, r, &acceptOptions)
 	if err != nil {
-		log.Printf("[%v WebsocketConnectionHandler] error: %v", browserConnectionId, err)
+		log.Errorf("error: %v", err)
 	}
 	defer c.Close(websocket.StatusInternalError, "the sky is falling")
 
 	var thisConnection = common.BrowserConnection{
-		Id:             browserConnectionId,
-		CurrentQueries: make(map[string]common.GraphQlQuery, 1),
-		Context:        browserConnectionContext,
+		Id:                  browserConnectionId,
+		ActiveSubscriptions: make(map[string]common.GraphQlSubscription, 1),
+		Context:             browserConnectionContext,
 	}
 
 	WsConnections[browserConnectionId] = &thisConnection
@@ -53,15 +58,16 @@ func WebsocketConnectionHandler(w http.ResponseWriter, r *http.Request) {
 	defer delete(WsConnections, browserConnectionId)
 
 	// Log it
-	log.Printf("[%v WebsocketConnectionHandler] connection accepted", browserConnectionId)
+	log.Printf("connection accepted")
 
 	// Create channels
-	fromBrowserChannel := make(chan interface{}, bufferSize)
+	fromBrowserChannel1 := make(chan interface{}, bufferSize)
+	fromBrowserChannel2 := make(chan interface{}, bufferSize)
 	toBrowserChannel := make(chan interface{}, bufferSize)
 
 	// Ensure a hasura client is running while the browser is connected
 	go func() {
-		log.Printf("[%v WebsocketConnectionHandler] starting hasura client", browserConnectionId)
+		log.Printf("starting hasura client")
 
 	BrowserConnectedLoop:
 		for {
@@ -70,8 +76,8 @@ func WebsocketConnectionHandler(w http.ResponseWriter, r *http.Request) {
 				break BrowserConnectedLoop
 			default:
 				{
-					log.Printf("[%v WebsocketConnectionHandler] creating hasura client", browserConnectionId)
-					hascli.HasuraClient(WsConnections[browserConnectionId], r.Cookies(), fromBrowserChannel, toBrowserChannel)
+					log.Printf("creating hasura client")
+					hascli.HasuraClient(WsConnections[browserConnectionId], r.Cookies(), fromBrowserChannel1, toBrowserChannel)
 					time.Sleep(100 * time.Millisecond)
 				}
 			}
@@ -82,13 +88,13 @@ func WebsocketConnectionHandler(w http.ResponseWriter, r *http.Request) {
 	var wg sync.WaitGroup
 	wg.Add(3)
 
-	// Start routines
-	// reads from browser, writes to fromBrowserMirrorChannel
-	var fromBrowserReplicatedChannel = make(chan interface{}, bufferSize)
-	go SessionTokenReader(browserConnectionId, browserConnectionContext, fromBrowserReplicatedChannel, fromBrowserChannel, &wg)
+	// Reads from browser connection, writes into fromBrowserChannel1 and fromBrowserChannel2
+	go reader.WebsocketConnectionReader(browserConnectionId, browserConnectionContext, c, fromBrowserChannel1, fromBrowserChannel2, &wg)
 
-	go WebsocketConnectionReader(browserConnectionId, browserConnectionContext, c, fromBrowserReplicatedChannel, toBrowserChannel, &wg)
-	go WebsocketConnectionWriter(browserConnectionId, browserConnectionContext, c, fromBrowserReplicatedChannel, toBrowserChannel, &wg)
+	// Reads from toBrowserChannel, writes to browser connection
+	go writer.WebsocketConnectionWriter(browserConnectionId, browserConnectionContext, c, toBrowserChannel, &wg)
+
+	go SessionTokenReader(browserConnectionId, browserConnectionContext, fromBrowserChannel2, &wg)
 
 	// Wait
 	wg.Wait()

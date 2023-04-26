@@ -1,17 +1,19 @@
-package wssrv
+package writer
 
 import (
 	"context"
-	"log"
+	log "github.com/sirupsen/logrus"
 	"sync"
 
 	"nhooyr.io/websocket"
 	"nhooyr.io/websocket/wsjson"
 )
 
-func WebsocketConnectionWriter(connectionId string, ctx context.Context, c *websocket.Conn, fromBrowserChannel chan interface{}, toBrowserChannel chan interface{}, wg *sync.WaitGroup) {
+func WebsocketConnectionWriter(browserConnectionId string, ctx context.Context, c *websocket.Conn, toBrowserChannel chan interface{}, wg *sync.WaitGroup) {
+	log := log.WithField("_routine", "websocketConnectionWriter").WithField("browserConnectionId", browserConnectionId)
+
 	defer wg.Done()
-	defer log.Printf("[%v websocketConnectionWriter] finished", connectionId)
+	defer log.Printf("finished")
 
 RangeLoop:
 	for {
@@ -22,10 +24,10 @@ RangeLoop:
 			{
 				var fromBrowserMessageAsMap = toBrowserMessage.(map[string]interface{})
 
-				log.Printf("[%v websocketConnectionWriter] [middleware->browser] %v", connectionId, toBrowserMessage)
+				log.Tracef("sending to browser: %v", toBrowserMessage)
 				err := wsjson.Write(ctx, c, toBrowserMessage)
 				if err != nil {
-					log.Printf("[%v websocketConnectionWriter] error on write (browser is disconnected): %v", connectionId, err)
+					log.Errorf("error on write (browser is disconnected): %v", err)
 					return
 				}
 

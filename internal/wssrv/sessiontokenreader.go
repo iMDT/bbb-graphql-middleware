@@ -2,13 +2,15 @@ package wssrv
 
 import (
 	"context"
-	"log"
+	log "github.com/sirupsen/logrus"
 	"sync"
 )
 
-func SessionTokenReader(connectionId string, browserConnectionContext context.Context, input chan interface{}, output chan interface{}, wg *sync.WaitGroup) {
+func SessionTokenReader(connectionId string, browserConnectionContext context.Context, input chan interface{}, wg *sync.WaitGroup) {
+	log := log.WithField("_routine", "SessionTokenReader")
+
 	defer wg.Done()
-	defer log.Printf("[%v SessionTokenReader] finished", connectionId)
+	defer log.Info("finished")
 
 	// Consume the fromBrowser channel and pass it
 
@@ -16,9 +18,6 @@ func SessionTokenReader(connectionId string, browserConnectionContext context.Co
 
 	// Intercept the fromBrowserMessage channel to get the sessionToken
 	for fromBrowserMessage := range input {
-		// Sends to the output channel (to be used by other routines)
-		output <- fromBrowserMessage
-
 		// Gets the sessionToken
 		if sessionToken == "N.A." {
 			var fromBrowserMessageAsMap = fromBrowserMessage.(map[string]interface{})
