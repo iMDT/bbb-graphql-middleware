@@ -12,14 +12,14 @@ func SessionTokenReader(connectionId string, browserConnectionContext context.Co
 	defer wg.Done()
 	defer log.Info("finished")
 
-	// Consume the fromBrowser channel and pass it
-
-	var sessionToken = "N.A."
+	WsConnectionsMutex.Lock()
+	browserConnection := WsConnections[connectionId]
+	WsConnectionsMutex.Unlock()
 
 	// Intercept the fromBrowserMessage channel to get the sessionToken
 	for fromBrowserMessage := range input {
 		// Gets the sessionToken
-		if sessionToken == "N.A." {
+		if browserConnection.SessionToken == "" {
 			var fromBrowserMessageAsMap = fromBrowserMessage.(map[string]interface{})
 
 			if fromBrowserMessageAsMap["type"] == "connection_init" {
@@ -28,8 +28,8 @@ func SessionTokenReader(connectionId string, browserConnectionContext context.Co
 				var sessionToken = headersAsMap["X-Session-Token"]
 				if sessionToken != nil {
 					sessionToken := headersAsMap["X-Session-Token"].(string)
-					log.Printf("[%v SessionTokenReader] intercepted session token %v", connectionId, sessionToken)
-					WsConnections[connectionId].SessionToken = sessionToken
+					log.Infof("[SessionTokenReader] intercepted session token %v", sessionToken)
+					browserConnection.SessionToken = sessionToken
 				}
 			}
 		}

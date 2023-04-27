@@ -9,17 +9,15 @@ import (
 )
 
 func main() {
-	// Define the log level (TraceLevel logs everything)
+	// Configure logger
 	log.SetLevel(log.TraceLevel)
-	// Define log format as JSON
 	log.SetFormatter(&log.JSONFormatter{})
-	// Specify the routine that emitted the log
 	log := log.WithField("_routine", "SessionTokenReader")
 
 	// Connection invalidator
 	go invalidator.RedisConnectionnInvalidator()
 
-	// Webscoket listener
+	// Websocket listener
 	var listenPort = 8378
 	http.HandleFunc("/", wssrv.WebsocketConnectionHandler)
 

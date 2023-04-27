@@ -44,6 +44,7 @@ func RedisConnectionnInvalidator() {
 			sessionTokenToInvalidate := messageBodyAsMap["sessionToken"]
 			log.Infof("Received invalidate request for sessionToken %v", sessionTokenToInvalidate)
 
+			wssrv.WsConnectionsMutex.Lock()
 			for _, browserConnection := range wssrv.WsConnections {
 				if browserConnection.SessionToken == sessionTokenToInvalidate {
 					if browserConnection.HasuraConnection != nil {
@@ -53,6 +54,7 @@ func RedisConnectionnInvalidator() {
 					}
 				}
 			}
+			wssrv.WsConnectionsMutex.Unlock()
 		}
 	}
 }

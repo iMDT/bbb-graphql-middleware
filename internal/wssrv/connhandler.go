@@ -22,6 +22,7 @@ var bufferSize = 100
 
 // active websocket connections
 var WsConnections map[string]*common.BrowserConnection = make(map[string]*common.BrowserConnection)
+var WsConnectionsMutex = &sync.Mutex{}
 
 // Handle client connection
 // This is the connection that comes from browser
@@ -53,9 +54,15 @@ func WebsocketConnectionHandler(w http.ResponseWriter, r *http.Request) {
 		Context:             browserConnectionContext,
 	}
 
+	WsConnectionsMutex.Lock()
 	WsConnections[browserConnectionId] = &thisConnection
+	WsConnectionsMutex.Unlock()
 
-	defer delete(WsConnections, browserConnectionId)
+	defer func() {
+		WsConnectionsMutex.Lock()
+		delete(WsConnections, browserConnectionId)
+		WsConnectionsMutex.Unlock()
+	}()
 
 	// Log it
 	log.Printf("connection accepted")
@@ -77,7 +84,10 @@ func WebsocketConnectionHandler(w http.ResponseWriter, r *http.Request) {
 			default:
 				{
 					log.Printf("creating hasura client")
-					hascli.HasuraClient(WsConnections[browserConnectionId], r.Cookies(), fromBrowserChannel1, toBrowserChannel)
+					WsConnectionsMutex.Lock()
+					thisBrowserConnection := WsConnections[browserConnectionId]
+					WsConnectionsMutex.Unlock()
+					hascli.HasuraClient(thisBrowserConnection, r.Cookies(), fromBrowserChannel1, toBrowserChannel)
 					time.Sleep(100 * time.Millisecond)
 				}
 			}
@@ -85,18 +95,25 @@ func WebsocketConnectionHandler(w http.ResponseWriter, r *http.Request) {
 	}()
 
 	// Configure the wait group (to hold this routine execution until both are completed)
-	var wg sync.WaitGroup
-	wg.Add(3)
+	var wgAll sync.WaitGroup
+	wgAll.Add(3)
+
+	var wgReader sync.WaitGroup
+	wgReader.Add(1)
 
 	// Reads from browser connection, writes into fromBrowserChannel1 and fromBrowserChannel2
-	go reader.WebsocketConnectionReader(browserConnectionId, browserConnectionContext, c, fromBrowserChannel1, fromBrowserChannel2, &wg)
+	go reader.WebsocketConnectionReader(browserConnectionId, browserConnectionContext, c, fromBrowserChannel1, fromBrowserChannel2, []*sync.WaitGroup{&wgAll, &wgReader})
+	go func() {
+		wgReader.Wait()
+		thisConnection.Disconnected = true
+	}()
 
 	// Reads from toBrowserChannel, writes to browser connection
-	go writer.WebsocketConnectionWriter(browserConnectionId, browserConnectionContext, c, toBrowserChannel, &wg)
+	go writer.WebsocketConnectionWriter(browserConnectionId, browserConnectionContext, c, toBrowserChannel, &wgAll)
 
-	go SessionTokenReader(browserConnectionId, browserConnectionContext, fromBrowserChannel2, &wg)
+	go SessionTokenReader(browserConnectionId, browserConnectionContext, fromBrowserChannel2, &wgAll)
 
-	// Wait
-	wg.Wait()
+	// Wait until all routines are finished
+	wgAll.Wait()
 
 }

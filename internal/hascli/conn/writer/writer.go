@@ -11,7 +11,11 @@ import (
 // HasuraConnectionWriter
 // process messages (middleware to hasura)
 func HasuraConnectionWriter(hc *common.HasuraConnection, fromBrowserChannel chan interface{}, wg *sync.WaitGroup) {
-	log := log.WithField("_routine", "HasuraConnectionWriter").WithField("browserConnectionId", hc.Browserconn.Id).WithField("hasuraConnectionId", hc.Id)
+	log := log.WithField("_routine", "HasuraConnectionWriter")
+
+	browserConnection := hc.Browserconn
+
+	log = log.WithField("browserConnectionId", browserConnection.Id).WithField("hasuraConnectionId", hc.Id)
 
 	defer wg.Done()
 	defer hc.ContextCancelFunc()
@@ -32,24 +36,27 @@ RangeLoop:
 
 				if fromBrowserMessageAsMap["type"] == "start" {
 					var queryId = fromBrowserMessageAsMap["id"].(string)
-					hc.Browserconn.ActiveSubscriptions[queryId] = common.GraphQlSubscription{
+
+					browserConnection.ActiveSubscriptionsMutex.Lock()
+					browserConnection.ActiveSubscriptions[queryId] = common.GraphQlSubscription{
 						Id:                        queryId,
 						Message:                   fromBrowserMessage,
 						LastSeenOnHasuraConnetion: hc.Id,
 					}
-
-					// log.Tracef("Current queries: %v", hc.Browserconn.ActiveSubscriptions)
+					// log.Tracef("Current queries: %v", browserConnection.ActiveSubscriptions)
+					browserConnection.ActiveSubscriptionsMutex.Unlock()
 				}
 
 				if fromBrowserMessageAsMap["type"] == "stop" {
 					var queryId = fromBrowserMessageAsMap["id"].(string)
-					delete(hc.Browserconn.ActiveSubscriptions, queryId)
-
-					// log.Tracef("Current queries: %v", hc.Browserconn.ActiveSubscriptions)
+					browserConnection.ActiveSubscriptionsMutex.Lock()
+					delete(browserConnection.ActiveSubscriptions, queryId)
+					// log.Tracef("Current queries: %v", browserConnection.ActiveSubscriptions)
+					browserConnection.ActiveSubscriptionsMutex.Unlock()
 				}
 
 				if fromBrowserMessageAsMap["type"] == "connection_init" {
-					hc.Browserconn.ConnectionInitMessage = fromBrowserMessage
+					browserConnection.ConnectionInitMessage = fromBrowserMessage
 				}
 
 				log.Tracef("sending to hasura: %v", fromBrowserMessage)

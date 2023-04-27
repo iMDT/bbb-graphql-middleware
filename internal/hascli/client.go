@@ -92,8 +92,10 @@ func HasuraClient(browserConnection *common.BrowserConnection, cookies []*http.C
 	go reader.HasuraConnectionReader(&thisConnection, toBrowserChannel, fromBrowserChannel, &wg)
 
 	// if it's a reconnect, inject authentication
-	if thisConnection.Browserconn.ConnectionInitMessage != nil {
-		fromBrowserChannel <- thisConnection.Browserconn.ConnectionInitMessage
+	if !browserConnection.Disconnected && browserConnection.ConnectionInitMessage != nil {
+		log.Info("VOU MANDAR")
+		fromBrowserChannel <- browserConnection.ConnectionInitMessage
+		log.Info("MANDEI")
 	}
 
 	// Wait

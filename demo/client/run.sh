@@ -1,2 +1,2 @@
 #!/bin/bash
-nodemon --exec node main.js --signal SIGTERM
+node main.js

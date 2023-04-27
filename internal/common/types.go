@@ -2,6 +2,7 @@ package common
 
 import (
 	"context"
+	"sync"
 
 	"nhooyr.io/websocket"
 )
@@ -13,12 +14,14 @@ type GraphQlSubscription struct {
 }
 
 type BrowserConnection struct {
-	Id                    string                         // browser connection id
-	SessionToken          string                         // session token of this connection
-	Context               context.Context                // browser connection context
-	ActiveSubscriptions   map[string]GraphQlSubscription // active subscriptions of this connection (start, but no stop)
-	ConnectionInitMessage interface{}                    // init message received in this connection (to be used on hasura reconnect)
-	HasuraConnection      *HasuraConnection              // associated hasura connection
+	Id                       string                         // browser connection id
+	SessionToken             string                         // session token of this connection
+	Context                  context.Context                // browser connection context
+	ActiveSubscriptions      map[string]GraphQlSubscription // active subscriptions of this connection (start, but no stop)
+	ActiveSubscriptionsMutex sync.Mutex                     // mutex to control the map usage
+	ConnectionInitMessage    interface{}                    // init message received in this connection (to be used on hasura reconnect)
+	HasuraConnection         *HasuraConnection              // associated hasura connection
+	Disconnected             bool                           // indicate if the connection is gone
 }
 
 type HasuraConnection struct {
