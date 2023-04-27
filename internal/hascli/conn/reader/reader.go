@@ -22,6 +22,7 @@ func HasuraConnectionReader(hc *common.HasuraConnection, fromHasuraToBrowserChan
 		var message interface{}
 		err := wsjson.Read(hc.Context, hc.Websocket, &message)
 		if err != nil {
+			log.Errorf("Error: %v", err)
 			return
 		}
 
