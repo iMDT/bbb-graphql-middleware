@@ -93,9 +93,7 @@ func HasuraClient(browserConnection *common.BrowserConnection, cookies []*http.C
 
 	// if it's a reconnect, inject authentication
 	if !browserConnection.Disconnected && browserConnection.ConnectionInitMessage != nil {
-		log.Info("VOU MANDAR")
 		fromBrowserChannel <- browserConnection.ConnectionInitMessage
-		log.Info("MANDEI")
 	}
 
 	// Wait
