@@ -2,8 +2,8 @@ package main
 
 import (
 	"fmt"
-	"github.com/iMDT/bbb-graphql-middleware/internal/wssrv"
-	"github.com/iMDT/bbb-graphql-middleware/internal/wssrv/invalidator"
+	"github.com/iMDT/bbb-graphql-middleware/internal/websrv"
+	"github.com/iMDT/bbb-graphql-middleware/internal/websrv/invalidator"
 	log "github.com/sirupsen/logrus"
 	"net/http"
 )
@@ -19,7 +19,7 @@ func main() {
 
 	// Websocket listener
 	var listenPort = 8378
-	http.HandleFunc("/", wssrv.WebsocketConnectionHandler)
+	http.HandleFunc("/", websrv.ConnectionHandler)
 
 	log.Infof("listening on port %v", listenPort)
 	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%v", listenPort), nil))

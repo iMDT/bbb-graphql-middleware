@@ -1,4 +1,4 @@
-package wssrv
+package websrv
 
 import (
 	"context"
@@ -6,18 +6,18 @@ import (
 	"sync"
 )
 
-func SessionTokenReader(connectionId string, browserConnectionContext context.Context, input chan interface{}, wg *sync.WaitGroup) {
+func SessionTokenReader(connectionId string, browserConnectionContext context.Context, fromBrowser chan interface{}, wg *sync.WaitGroup) {
 	log := log.WithField("_routine", "SessionTokenReader")
 
 	defer wg.Done()
 	defer log.Info("finished")
 
-	WsConnectionsMutex.Lock()
-	browserConnection := WsConnections[connectionId]
-	WsConnectionsMutex.Unlock()
+	BrowserConnectionsMutex.Lock()
+	browserConnection := BrowserConnections[connectionId]
+	BrowserConnectionsMutex.Unlock()
 
 	// Intercept the fromBrowserMessage channel to get the sessionToken
-	for fromBrowserMessage := range input {
+	for fromBrowserMessage := range fromBrowser {
 		// Gets the sessionToken
 		if browserConnection.SessionToken == "" {
 			var fromBrowserMessageAsMap = fromBrowserMessage.(map[string]interface{})

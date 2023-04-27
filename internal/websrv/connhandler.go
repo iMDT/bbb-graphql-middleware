@@ -1,10 +1,10 @@
-package wssrv
+package websrv
 
 import (
 	"context"
 	"fmt"
-	"github.com/iMDT/bbb-graphql-middleware/internal/wssrv/reader"
-	"github.com/iMDT/bbb-graphql-middleware/internal/wssrv/writer"
+	"github.com/iMDT/bbb-graphql-middleware/internal/websrv/reader"
+	"github.com/iMDT/bbb-graphql-middleware/internal/websrv/writer"
 	log "github.com/sirupsen/logrus"
 	"net/http"
 	"sync"
@@ -20,14 +20,14 @@ var lastBrowserConnectionId int
 // Buffer size of the channels
 var bufferSize = 100
 
-// active websocket connections
-var WsConnections map[string]*common.BrowserConnection = make(map[string]*common.BrowserConnection)
-var WsConnectionsMutex = &sync.Mutex{}
+// active browser connections
+var BrowserConnections = make(map[string]*common.BrowserConnection)
+var BrowserConnectionsMutex = &sync.Mutex{}
 
 // Handle client connection
 // This is the connection that comes from browser
-func WebsocketConnectionHandler(w http.ResponseWriter, r *http.Request) {
-	log := log.WithField("_routine", "WebsocketConnectionHandler")
+func ConnectionHandler(w http.ResponseWriter, r *http.Request) {
+	log := log.WithField("_routine", "ConnectionHandler")
 
 	// Obtain id for this connection
 	lastBrowserConnectionId++
@@ -54,14 +54,14 @@ func WebsocketConnectionHandler(w http.ResponseWriter, r *http.Request) {
 		Context:             browserConnectionContext,
 	}
 
-	WsConnectionsMutex.Lock()
-	WsConnections[browserConnectionId] = &thisConnection
-	WsConnectionsMutex.Unlock()
+	BrowserConnectionsMutex.Lock()
+	BrowserConnections[browserConnectionId] = &thisConnection
+	BrowserConnectionsMutex.Unlock()
 
 	defer func() {
-		WsConnectionsMutex.Lock()
-		delete(WsConnections, browserConnectionId)
-		WsConnectionsMutex.Unlock()
+		BrowserConnectionsMutex.Lock()
+		delete(BrowserConnections, browserConnectionId)
+		BrowserConnectionsMutex.Unlock()
 	}()
 
 	// Log it
@@ -84,9 +84,9 @@ func WebsocketConnectionHandler(w http.ResponseWriter, r *http.Request) {
 			default:
 				{
 					log.Printf("creating hasura client")
-					WsConnectionsMutex.Lock()
-					thisBrowserConnection := WsConnections[browserConnectionId]
-					WsConnectionsMutex.Unlock()
+					BrowserConnectionsMutex.Lock()
+					thisBrowserConnection := BrowserConnections[browserConnectionId]
+					BrowserConnectionsMutex.Unlock()
 					hascli.HasuraClient(thisBrowserConnection, r.Cookies(), fromBrowserChannel1, toBrowserChannel)
 					time.Sleep(100 * time.Millisecond)
 				}

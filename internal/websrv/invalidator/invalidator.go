@@ -3,7 +3,7 @@ package invalidator
 import (
 	"context"
 	"encoding/json"
-	"github.com/iMDT/bbb-graphql-middleware/internal/wssrv"
+	"github.com/iMDT/bbb-graphql-middleware/internal/websrv"
 	"github.com/redis/go-redis/v9"
 	log "github.com/sirupsen/logrus"
 )
@@ -44,8 +44,8 @@ func RedisConnectionnInvalidator() {
 			sessionTokenToInvalidate := messageBodyAsMap["sessionToken"]
 			log.Infof("Received invalidate request for sessionToken %v", sessionTokenToInvalidate)
 
-			wssrv.WsConnectionsMutex.Lock()
-			for _, browserConnection := range wssrv.WsConnections {
+			websrv.BrowserConnectionsMutex.Lock()
+			for _, browserConnection := range websrv.BrowserConnections {
 				if browserConnection.SessionToken == sessionTokenToInvalidate {
 					if browserConnection.HasuraConnection != nil {
 						log.Infof("Processing invalidate request for sessionToken %v (hasura connection %v)", sessionTokenToInvalidate, browserConnection.HasuraConnection.Id)
@@ -54,7 +54,7 @@ func RedisConnectionnInvalidator() {
 					}
 				}
 			}
-			wssrv.WsConnectionsMutex.Unlock()
+			websrv.BrowserConnectionsMutex.Unlock()
 		}
 	}
 }
