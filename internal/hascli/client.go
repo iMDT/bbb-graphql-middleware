@@ -6,6 +6,7 @@ import (
 	"github.com/iMDT/bbb-graphql-middleware/internal/hascli/conn/reader"
 	"github.com/iMDT/bbb-graphql-middleware/internal/hascli/conn/writer"
 	log "github.com/sirupsen/logrus"
+	"math"
 	"net/http"
 	"net/http/cookiejar"
 	"net/url"
@@ -73,6 +74,8 @@ func HasuraClient(browserConnection *common.BrowserConnection, cookies []*http.C
 		return xerrors.Errorf("error connecting to hasura: %v", err)
 	}
 	defer c.Close(websocket.StatusInternalError, "the sky is falling")
+
+	c.SetReadLimit(math.MaxInt64 - 1)
 
 	thisConnection.Websocket = c
 
